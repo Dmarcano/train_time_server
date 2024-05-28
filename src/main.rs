@@ -12,8 +12,12 @@ pub mod transit_realtime {
     tonic::include_proto!("transit_realtime");
 }
 
-use transit_realtime::{FeedEntity, TripUpdate, VehiclePosition};
+use transit_realtime::{
+    trip_update::{StopTimeEvent, StopTimeUpdate, TripProperties},
+    Alert, FeedEntity, TripDescriptor, TripUpdate, VehiclePosition,
+};
 
+#[derive(Copy, Clone, Debug)]
 pub enum NYCTrains {
     E,
     A,
@@ -62,19 +66,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let entity: &transit_realtime::FeedEntity =
         feed_message.entity.iter().take(1).next().take().unwrap();
 
+    let trip_updates = feed_message.entity.iter().filter_map(|entity| entity.trip_update.clone()).collect::<Vec<_>>();
+    let vehicles = feed_message.entity.iter().filter_map(|entity| entity.vehicle.clone()).collect::<Vec<_>>();
+    let alerts = feed_message.entity.iter().filter_map(|entity| entity.alert.clone()).collect::<Vec<_>>();
+
     println!("{:#?}", entity);
     println!("\n====== header ====== \n {:#?}", header);
 
     let path = "src/schedules/nyc/google_transit_supplemented.zip";
-    let gtfs_schedule = Gtfs::from_path(path)?;
+    // let gtfs_schedule = Gtfs::from_path(path)?;
 
-    let a = gtfs_schedule.borrow();
-    println!("\n====== header ====== \n {:#?}", a.read_duration);
+    // let a = gtfs_schedule.borrow();
+    // println!("\n====== header ====== \n {:#?}", a.read_duration);
 
     Ok(())
 }
 
+#[derive(Clone, Debug)]
+struct Trip {
+    id: String,
+    is_deleted: bool,
+    timestamp: u64,
+    delay: i32,
+}
+
 fn convert_entity_to_row(entity: &FeedEntity) -> Result<(), String> {
+    let id = entity.id.clone();
+    let is_deleted = entity.is_deleted.map_or(false, |val| val);
+
+    let trip_translation = entity.trip_update.as_ref().map(| trip_update| trip_update);
+
     Ok(())
 }
 
