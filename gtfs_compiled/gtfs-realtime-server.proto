@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+import "gtfs-realtime.proto";
+
+package transit_realtime;
+
+message EmptyRequest {}
+
+service GtfsServer {
+    rpc GtfsRequest (EmptyRequest) returns (FeedMessage); 
+}
