@@ -1,12 +1,14 @@
 use prost::Message;
 // use axum::extract::Request;
-use gtfs_structures::Gtfs;
+use gtfs_structures::{Gtfs, Stop};
 use tokio;
 
 use reqwest::{self};
-use std::{borrow::Borrow, env};
+use std::{borrow::Borrow, env, sync::Arc};
 
-pub mod num_conversion;
+pub mod gtfs_queries;
+
+use gtfs_queries::get_parent_station_names;
 
 pub mod transit_realtime {
     tonic::include_proto!("transit_realtime");
@@ -63,46 +65,73 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let feed_message = transit_realtime::FeedMessage::decode(response_bytes.clone())?;
     let header = feed_message.clone().header;
 
-    let entity: &transit_realtime::FeedEntity =
-        feed_message.entity.iter().take(1).next().take().unwrap();
+    let trip_updates = feed_message
+        .entity
+        .iter()
+        .filter_map(|entity| entity.trip_update.clone())
+        .collect::<Vec<_>>();
+    let vehicles = feed_message
+        .entity
+        .iter()
+        .filter_map(|entity| entity.vehicle.clone())
+        .collect::<Vec<_>>();
+    let alerts = feed_message
+        .entity
+        .iter()
+        .filter_map(|entity| entity.alert.clone())
+        .collect::<Vec<_>>();
+    let shapes = feed_message
+        .entity
+        .iter()
+        .filter_map(|entity| entity.shape.clone())
+        .collect::<Vec<_>>();
+    let stops = feed_message
+        .entity
+        .iter()
+        .filter_map(|entity| entity.stop.clone())
+        .collect::<Vec<_>>();
 
-    let trip_updates = feed_message.entity.iter().filter_map(|entity| entity.trip_update.clone()).collect::<Vec<_>>();
-    let vehicles = feed_message.entity.iter().filter_map(|entity| entity.vehicle.clone()).collect::<Vec<_>>();
-    let alerts = feed_message.entity.iter().filter_map(|entity| entity.alert.clone()).collect::<Vec<_>>();
+    let seven_trips = trip_updates
+        .iter()
+        .filter(|trip_update| {
+            trip_update.trip.route_id() == "7" || trip_update.trip.route_id() == "7x"
+        })
+        .cloned()
+        .collect::<Vec<_>>();
 
-    println!("{:#?}", entity);
+    // we need to find the
+
+    // 7 train trip id
+    // queensboro plaza stop ID
+    // from there add all the 7 trains that are stopping there
+
     println!("\n====== header ====== \n {:#?}", header);
 
     let path = "src/schedules/nyc/google_transit_supplemented.zip";
-    // let gtfs_schedule = Gtfs::from_path(path)?;
+    let gtfs_schedule = Gtfs::from_path(path)?;
 
-    // let a = gtfs_schedule.borrow();
+    let names = get_parent_station_names(gtfs_schedule.borrow());
+    println!("\n====== names ====== \n {:#?}", names);
+    // get_children_stations(gtfs_schedule.borrow());
     // println!("\n====== header ====== \n {:#?}", a.read_duration);
 
     Ok(())
 }
 
-#[derive(Clone, Debug)]
-struct Trip {
-    id: String,
-    is_deleted: bool,
-    timestamp: u64,
-    delay: i32,
+pub fn get_parent_stations(gtfs: &Gtfs) -> Vec<Arc<Stop>> {
+    gtfs.stops
+        .iter()
+        .map(|station| station.1.clone())
+        .filter(|station| station.parent_station.is_none())
+        .map(|arc| arc.clone())
+        .collect::<Vec<_>>()
 }
 
-fn convert_entity_to_row(entity: &FeedEntity) -> Result<(), String> {
-    let id = entity.id.clone();
-    let is_deleted = entity.is_deleted.map_or(false, |val| val);
-
-    let trip_translation = entity.trip_update.as_ref().map(| trip_update| trip_update);
-
-    Ok(())
-}
-
-fn convert_trip_update(update: &TripUpdate) -> Result<(), String> {
-    Ok(())
-}
-
-fn convert_vehicle_pos(vehicle_pos: &VehiclePosition) -> Result<(), String> {
-    Ok(())
+pub fn get_children_stations(gtfs: &Gtfs) {
+    let out = gtfs
+        .stops
+        .iter()
+        .filter(|station| station.1.parent_station.is_some())
+        .collect::<Vec<_>>();
+    print!("{:#?}", out);
 }

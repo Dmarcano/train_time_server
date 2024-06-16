@@ -5,7 +5,7 @@ use tonic_build;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tonic_build::compile_protos("gtfs_compiled/gtfs-realtime.proto")?;
-    tonic_build::compile_protos("gtfs_compiled/nyc-gtfs-realtime.proto")?;
+    // tonic_build::compile_protos("gtfs_compiled/nyc-gtfs-realtime.proto")?;
 
     // compile_gtfs()?;
     Ok(())

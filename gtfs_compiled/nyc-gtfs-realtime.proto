@@ -23,6 +23,7 @@ message TripReplacementPeriod {
 
 // NYCT Subway extensions for the feed header
 message NyctFeedHeader {
+
   // Version of the NYCT Subway extensions
   // The current version is 1.0
   required string nyct_subway_version = 1;
