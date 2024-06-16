@@ -8,7 +8,7 @@ use std::{borrow::Borrow, env, sync::Arc};
 
 pub mod gtfs_queries;
 
-use gtfs_queries::get_parent_station_names;
+use gtfs_queries::{get_parent_station_names, get_station_match_name};
 
 pub mod transit_realtime {
     tonic::include_proto!("transit_realtime");
@@ -110,10 +110,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = "src/schedules/nyc/google_transit_supplemented.zip";
     let gtfs_schedule = Gtfs::from_path(path)?;
 
-    let names = get_parent_station_names(gtfs_schedule.borrow());
-    println!("\n====== names ====== \n {:#?}", names);
+    // let names = get_parent_station_names(gtfs_schedule.borrow());
+    let out  = get_station_match_name("Queensboro", gtfs_schedule.borrow());
+    println!("\n====== names ====== \n {:#?}", out);
     // get_children_stations(gtfs_schedule.borrow());
-    // println!("\n====== header ====== \n {:#?}", a.read_duration);
 
     Ok(())
 }
