@@ -1,10 +1,10 @@
 use prost::Message;
 // use axum::extract::Request;
-use gtfs_structures::{Gtfs, Stop};
+use gtfs_structures::{Gtfs, Id, Stop};
 use tokio;
 
 use reqwest::{self};
-use std::{borrow::Borrow, env, sync::Arc};
+use std::{collections::HashSet, env, sync::Arc};
 
 pub mod gtfs_queries;
 
@@ -75,20 +75,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .filter_map(|entity| entity.vehicle.clone())
         .collect::<Vec<_>>();
-    let alerts = feed_message
-        .entity
+    // let alerts = feed_message
+    //     .entity
+    //     .iter()
+    //     .filter_map(|entity| entity.alert.clone())
+    //     .collect::<Vec<_>>();
+    // let shapes = feed_message
+    //     .entity
+    //     .iter()
+    //     .filter_map(|entity| entity.shape.clone())
+    //     .collect::<Vec<_>>();
+    // let stops = feed_message
+    //     .entity
+    //     .iter()
+    //     .filter_map(|entity| entity.stop.clone())
+    //     .collect::<Vec<_>>();
+
+    let seven_train_positions = vehicles
         .iter()
-        .filter_map(|entity| entity.alert.clone())
-        .collect::<Vec<_>>();
-    let shapes = feed_message
-        .entity
-        .iter()
-        .filter_map(|entity| entity.shape.clone())
-        .collect::<Vec<_>>();
-    let stops = feed_message
-        .entity
-        .iter()
-        .filter_map(|entity| entity.stop.clone())
+        .filter(|position| {
+            position
+                .trip
+                .as_ref()
+                .map(|trip| trip.route_id())
+                .map(|id| id == "7" || id == "7x")
+                .unwrap_or(false)
+        })
         .collect::<Vec<_>>();
 
     let seven_trips = trip_updates
@@ -99,22 +111,79 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .cloned()
         .collect::<Vec<_>>();
 
-    // we need to find the
-
-    // 7 train trip id
-    // queensboro plaza stop ID
-    // from there add all the 7 trains that are stopping there
-
     println!("\n====== header ====== \n {:#?}", header);
 
-    let path = "src/schedules/nyc/google_transit_supplemented.zip";
-    let gtfs_schedule = Gtfs::from_path(path)?;
+    // let path = "src/schedules/nyc/google_transit_supplemented.zip";
+    // let gtfs_schedule = Gtfs::from_path(path)?;
 
-    // let names = get_parent_station_names(gtfs_schedule.borrow());
-    let out  = get_station_match_name("Queensboro", gtfs_schedule.borrow());
-    println!("\n====== names ====== \n {:#?}", out);
-    // get_children_stations(gtfs_schedule.borrow());
+    // let queensboro_plaza_stops = get_station_match_name("Queensboro", gtfs_schedule.borrow());
 
+    let qbp_stop_ids: HashSet<&'static str> =
+        // HashSet::from(["718", "718S", "718N", "R09N", "R09S", "R09"]);
+        HashSet::from([ "718N",]);
+
+    // let qbp_stop_ids = queensboro_plaza_stops
+    //     .iter()
+    //     .map(|stop| stop.id())
+    //     .collect::<HashSet<_>>();
+
+    let mut seven_trip_updates_into_queensboro_plaza = seven_trips
+        .iter()
+        .flat_map(|trip_update| {
+            let stop_time_updates_into_station = trip_update
+                .stop_time_update
+                .iter()
+                .filter(|trip| qbp_stop_ids.contains(trip.stop_id()));
+
+            return stop_time_updates_into_station;
+        })
+        .collect::<Vec<_>>();
+
+    seven_trip_updates_into_queensboro_plaza.sort_by(|stop_time, other| {
+        stop_time
+            .arrival
+            .as_ref()
+            .unwrap()
+            .time()
+            .cmp(&other.arrival.as_ref().unwrap().time())
+    });
+
+    // let seven_trip_updates_into_queensboro_plaza = seven_trips
+    //     .iter()
+    //     .filter(|trip_update| {
+    //         let comparison_stop_id = trip_update
+    //             .stop_time_update
+    //             .first()
+    //             .and_then(|foo| Some(foo.stop_id()));
+    //         comparison_stop_id.is_some_and(|stop_id| qbp_stop_ids.contains(stop_id))
+    //     })
+    //     .collect::<Vec<_>>();
+
+    let seven_positions_into_queensboro_plaza = seven_train_positions
+        .iter()
+        .filter(|position| {
+            position
+                .stop_id
+                .as_ref()
+                .map(|stop_id| qbp_stop_ids.contains(stop_id.as_str()))
+                .unwrap_or(false)
+        })
+        .collect::<Vec<_>>();
+
+    println!(
+        "\n====== seven trip updates into queensboro plaza ====== \n {:#?}",
+        seven_trip_updates_into_queensboro_plaza
+    );
+
+    // println!(
+    //     "\n====== seven trains into queensboro plaza ====== \n {:#?}",
+    //     seven_train_positions
+    // );
+
+    // println!(
+    //     "\n====== seven trains into queensboro plaza ====== \n {:#?}",
+    //     seven_positions_into_queensboro_plaza
+    // );
     Ok(())
 }
 

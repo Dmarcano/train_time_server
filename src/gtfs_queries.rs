@@ -1,28 +1,22 @@
+use gtfs_structures::{Gtfs, Stop};
 use std::sync::Arc;
 
-use gtfs_structures::{Gtfs, Stop};
+// provide data from reading static gtfs files. Coming in from downloading zipped files from agencies
+pub trait StaticGTFSDataProvider {
+    fn get_all_stations(&self) -> Vec<Arc<Stop>>;
 
-#[derive(Clone, Debug)]
-pub struct StationName {
-    pub name: String,
-    pub id: String,
+    fn get_stations_by_name(&self, name_to_match: &str) -> Vec<Arc<Stop>>;
 }
 
-impl From<(String, String)> for StationName {
-    fn from(station_name: (String, String)) -> Self {
-        Self {
-            id: station_name.0,
-            name: station_name.1,
-        }
+impl StaticGTFSDataProvider for Gtfs {
+    fn get_all_stations(&self) -> Vec<Arc<Stop>> {
+        get_all_stations_query(self)
+            .map(|station| station.1.clone())
+            .collect()
     }
-}
 
-impl From<Stop> for StationName {
-    fn from(stop: Stop) -> Self {
-        Self {
-            id: stop.id,
-            name: stop.name.unwrap(),
-        }
+    fn get_stations_by_name(&self, name_to_match: &str) -> Vec<Arc<Stop>> {
+        get_station_match_name(name_to_match, &self)
     }
 }
 
