@@ -1,14 +1,12 @@
-use prost::Message;
-// use axum::extract::Request;
-use gtfs_structures::{Gtfs, Id, Stop};
-use tokio;
-
-use reqwest::{self};
-use std::{collections::HashSet, env, sync::Arc};
-
 pub mod gtfs_queries;
 
-use gtfs_queries::{get_parent_station_names, get_station_match_name};
+// use axum::extract::Request;
+use gtfs_structures::{Availability, Gtfs, Id, LocationType, Pathway, Stop, StopTransfer};
+use serde::{Deserialize, Serialize};
+use tokio;
+
+use reqwest::{self, Error, Response};
+use std::{collections::HashMap, env, sync::Arc};
 
 pub mod transit_realtime {
     tonic::include_proto!("transit_realtime");
@@ -18,6 +16,40 @@ use transit_realtime::{
     trip_update::{StopTimeEvent, StopTimeUpdate, TripProperties},
     Alert, FeedEntity, TripDescriptor, TripUpdate, VehiclePosition,
 };
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct MyStop {
+    /// Unique technical identifier (not for the traveller) of the stop
+    pub id: String,
+    /// Short text or a number that identifies the location for riders
+    pub code: Option<String>,
+    ///Name of the location. Use a name that people will understand in the local and tourist vernacular
+    pub name: Option<String>,
+    /// Description of the location that provides useful, quality information
+    pub description: Option<String>,
+    /// Type of the location
+    #[serde(default)]
+    pub location_type: LocationType,
+    /// Defines hierarchy between the different locations
+    pub parent_station: Option<String>,
+    /// Identifies the fare zone for a stop
+    pub zone_id: Option<String>,
+    /// URL of a web page about the location
+    pub url: Option<String>,
+    /// Longitude of the stop
+    pub longitude: Option<f64>,
+    /// Latitude of the stop
+    pub latitude: Option<f64>,
+    /// Timezone of the location
+    pub timezone: Option<String>,
+    /// Level of the location. The same level can be used by multiple unlinked stations
+    pub level_id: Option<String>,
+    /// Platform identifier for a platform stop (a stop belonging to a station)
+    pub platform_code: Option<String>,
+    /// Transfers from this Stop
+    /// Text to speech readable version of the stop_name
+    pub tts_name: Option<String>,
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum NYCTrains {
@@ -52,138 +84,38 @@ impl NYCTrains {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct ApiResponse {
+    pub stops: Vec<MyStop>,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env::set_var("RUST_BACKTRACE", "1");
-    let a_train = NYCTrains::Seven;
 
-    let uri = a_train.get_api_endpoints_str();
-    let response = reqwest::get(uri).await?;
+    let client = reqwest::Client::new();
 
-    let response_bytes = response.bytes().await?;
+    // Make the GET request to the Transitter demo API
+    let response = reqwest::get("https://demo.transiter.dev/systems/us-ny-subway/stops").await?;
 
-    let feed_message = transit_realtime::FeedMessage::decode(response_bytes.clone())?;
-    let header = feed_message.clone().header;
+    // Check if the request was successful
+    if response.status().is_success() {
+        // Parse the JSON response into a vector of Station structs
+        let api_response: ApiResponse = response.json().await?;
+        let stations = api_response.stops;
 
-    let trip_updates = feed_message
-        .entity
-        .iter()
-        .filter_map(|entity| entity.trip_update.clone())
-        .collect::<Vec<_>>();
-    let vehicles = feed_message
-        .entity
-        .iter()
-        .filter_map(|entity| entity.vehicle.clone())
-        .collect::<Vec<_>>();
-    // let alerts = feed_message
-    //     .entity
-    //     .iter()
-    //     .filter_map(|entity| entity.alert.clone())
-    //     .collect::<Vec<_>>();
-    // let shapes = feed_message
-    //     .entity
-    //     .iter()
-    //     .filter_map(|entity| entity.shape.clone())
-    //     .collect::<Vec<_>>();
-    // let stops = feed_message
-    //     .entity
-    //     .iter()
-    //     .filter_map(|entity| entity.stop.clone())
-    //     .collect::<Vec<_>>();
+        // Print out the station information
+        println!("Found {} NYC subway stations:", stations.len());
+        for station in stations {
+            println!(
+                "Name: {:?}\nLine: {:?}\nLocation: ({:?}, {:?})\nID: {}\n",
+                station.name, station.code, station.latitude, station.longitude, station.id
+            );
+        }
+    } else {
+        println!("Error: {} - {}", response.status(), response.text().await?);
+    }
 
-    let seven_train_positions = vehicles
-        .iter()
-        .filter(|position| {
-            position
-                .trip
-                .as_ref()
-                .map(|trip| trip.route_id())
-                .map(|id| id == "7" || id == "7x")
-                .unwrap_or(false)
-        })
-        .collect::<Vec<_>>();
-
-    let seven_trips = trip_updates
-        .iter()
-        .filter(|trip_update| {
-            trip_update.trip.route_id() == "7" || trip_update.trip.route_id() == "7x"
-        })
-        .cloned()
-        .collect::<Vec<_>>();
-
-    println!("\n====== header ====== \n {:#?}", header);
-
-    // let path = "src/schedules/nyc/google_transit_supplemented.zip";
-    // let gtfs_schedule = Gtfs::from_path(path)?;
-
-    // let queensboro_plaza_stops = get_station_match_name("Queensboro", gtfs_schedule.borrow());
-
-    let qbp_stop_ids: HashSet<&'static str> =
-        // HashSet::from(["718", "718S", "718N", "R09N", "R09S", "R09"]);
-        HashSet::from([ "718N",]);
-
-    // let qbp_stop_ids = queensboro_plaza_stops
-    //     .iter()
-    //     .map(|stop| stop.id())
-    //     .collect::<HashSet<_>>();
-
-    let mut seven_trip_updates_into_queensboro_plaza = seven_trips
-        .iter()
-        .flat_map(|trip_update| {
-            let stop_time_updates_into_station = trip_update
-                .stop_time_update
-                .iter()
-                .filter(|trip| qbp_stop_ids.contains(trip.stop_id()));
-
-            return stop_time_updates_into_station;
-        })
-        .collect::<Vec<_>>();
-
-    seven_trip_updates_into_queensboro_plaza.sort_by(|stop_time, other| {
-        stop_time
-            .arrival
-            .as_ref()
-            .unwrap()
-            .time()
-            .cmp(&other.arrival.as_ref().unwrap().time())
-    });
-
-    // let seven_trip_updates_into_queensboro_plaza = seven_trips
-    //     .iter()
-    //     .filter(|trip_update| {
-    //         let comparison_stop_id = trip_update
-    //             .stop_time_update
-    //             .first()
-    //             .and_then(|foo| Some(foo.stop_id()));
-    //         comparison_stop_id.is_some_and(|stop_id| qbp_stop_ids.contains(stop_id))
-    //     })
-    //     .collect::<Vec<_>>();
-
-    let seven_positions_into_queensboro_plaza = seven_train_positions
-        .iter()
-        .filter(|position| {
-            position
-                .stop_id
-                .as_ref()
-                .map(|stop_id| qbp_stop_ids.contains(stop_id.as_str()))
-                .unwrap_or(false)
-        })
-        .collect::<Vec<_>>();
-
-    println!(
-        "\n====== seven trip updates into queensboro plaza ====== \n {:#?}",
-        seven_trip_updates_into_queensboro_plaza
-    );
-
-    // println!(
-    //     "\n====== seven trains into queensboro plaza ====== \n {:#?}",
-    //     seven_train_positions
-    // );
-
-    // println!(
-    //     "\n====== seven trains into queensboro plaza ====== \n {:#?}",
-    //     seven_positions_into_queensboro_plaza
-    // );
     Ok(())
 }
 
