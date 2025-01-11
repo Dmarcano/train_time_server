@@ -20,4 +20,5 @@ gtfs-structures = "0.41.2"
 tonic-build = "0.11.0"
 codegen = "0.2.0"
 gtfs-structures = "0.41.2"
+serde = {version = "1.0.200", features = ['derive']}
 

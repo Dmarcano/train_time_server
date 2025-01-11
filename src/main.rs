@@ -1,12 +1,13 @@
 pub mod gtfs_queries;
 
 // use axum::extract::Request;
-use gtfs_structures::{Availability, Gtfs, Id, LocationType, Pathway, Stop, StopTransfer};
+use gtfs_structures::{Availability, Gtfs, Id, LocationType, Pathway, StopTransfer};
 use serde::{Deserialize, Serialize};
 use tokio;
 
 use reqwest::{self, Error, Response};
 use std::{collections::HashMap, env, sync::Arc};
+
 
 pub mod transit_realtime {
     tonic::include_proto!("transit_realtime");
@@ -14,7 +15,7 @@ pub mod transit_realtime {
 
 use transit_realtime::{
     trip_update::{StopTimeEvent, StopTimeUpdate, TripProperties},
-    Alert, FeedEntity, TripDescriptor, TripUpdate, VehiclePosition,
+    Alert, FeedEntity, Stop, TripDescriptor, TripUpdate, VehiclePosition,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -95,7 +96,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env::set_var("RUST_BACKTRACE", "1");
 
     // Make the GET request to the Transitter demo API
-    let response = reqwest::get("https://demo.transiter.dev/systems/us-ny-subway/stops?first_id=718").await?;
+    let response =
+        reqwest::get("https://demo.transiter.dev/systems/us-ny-subway/stops?first_id=718").await?;
 
     // Check if the request was successful
     if response.status().is_success() {
@@ -115,9 +117,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             })
             .collect::<Vec<_>>();
 
-        println!("Found {} Qeeunsborro subway stations:", queensboro_stations.len());
+        println!(
+            "Found {} Qeeunsborro subway stations:",
+            queensboro_stations.len()
+        );
         println!("next page token {:?}:", api_response.nextId);
-
 
         for station in queensboro_stations {
             println!(
