@@ -87,16 +87,15 @@ impl NYCTrains {
 #[derive(Debug, Serialize, Deserialize)]
 struct ApiResponse {
     pub stops: Vec<MyStop>,
+    pub nextId: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let client = reqwest::Client::new();
-
     // Make the GET request to the Transitter demo API
-    let response = reqwest::get("https://demo.transiter.dev/systems/us-ny-subway/stops").await?;
+    let response = reqwest::get("https://demo.transiter.dev/systems/us-ny-subway/stops?first_id=718").await?;
 
     // Check if the request was successful
     if response.status().is_success() {
@@ -106,7 +105,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Print out the station information
         println!("Found {} NYC subway stations:", stations.len());
-        for station in stations {
+        let queensboro_stations = stations
+            .iter()
+            .filter(|station| {
+                station
+                    .name
+                    .as_ref()
+                    .is_some_and(|name| name.contains("Queensboro"))
+            })
+            .collect::<Vec<_>>();
+
+        println!("Found {} Qeeunsborro subway stations:", queensboro_stations.len());
+        println!("next page token {:?}:", api_response.nextId);
+
+
+        for station in queensboro_stations {
             println!(
                 "Name: {:?}\nLine: {:?}\nLocation: ({:?}, {:?})\nID: {}\n",
                 station.name, station.code, station.latitude, station.longitude, station.id
@@ -117,22 +130,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-}
-
-pub fn get_parent_stations(gtfs: &Gtfs) -> Vec<Arc<Stop>> {
-    gtfs.stops
-        .iter()
-        .map(|station| station.1.clone())
-        .filter(|station| station.parent_station.is_none())
-        .map(|arc| arc.clone())
-        .collect::<Vec<_>>()
-}
-
-pub fn get_children_stations(gtfs: &Gtfs) {
-    let out = gtfs
-        .stops
-        .iter()
-        .filter(|station| station.1.parent_station.is_some())
-        .collect::<Vec<_>>();
-    print!("{:#?}", out);
 }
