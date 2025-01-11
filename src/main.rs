@@ -8,8 +8,7 @@ use tokio;
 use reqwest::{self, Error, Response};
 use std::{collections::HashMap, env, sync::Arc};
 
-
-pub mod codegen; 
+pub mod codegen;
 
 use codegen::transit_realtime::{
     trip_update::{StopTimeEvent, StopTimeUpdate, TripProperties},
