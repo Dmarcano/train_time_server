@@ -9,11 +9,9 @@ use reqwest::{self, Error, Response};
 use std::{collections::HashMap, env, sync::Arc};
 
 
-pub mod transit_realtime {
-    tonic::include_proto!("transit_realtime");
-}
+pub mod codegen; 
 
-use transit_realtime::{
+use codegen::transit_realtime::{
     trip_update::{StopTimeEvent, StopTimeUpdate, TripProperties},
     Alert, FeedEntity, Stop, TripDescriptor, TripUpdate, VehiclePosition,
 };
