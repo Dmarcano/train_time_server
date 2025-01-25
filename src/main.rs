@@ -1,19 +1,17 @@
-pub mod gtfs_queries;
+pub mod gtfs_realtime_api; //
 
 // use axum::extract::Request;
-use gtfs_structures::{Availability, Gtfs, Id, LocationType, Pathway, StopTransfer};
+use gtfs_structures::LocationType;
 use serde::{Deserialize, Serialize};
 use tokio;
 
-use reqwest::{self, Error, Response};
-use std::{collections::HashMap, env, sync::Arc};
+use chrono::{DateTime, NaiveDate};
+use reqwest::{self};
+use std::env;
 
 pub mod codegen;
 
-use codegen::transit_realtime::{
-    trip_update::{StopTimeEvent, StopTimeUpdate, TripProperties},
-    Alert, FeedEntity, Stop, TripDescriptor, TripUpdate, VehiclePosition,
-};
+use gtfs_realtime_api::{DemogAgencies, GtfsRealtimeAPI, TransiterRealTimeAPI};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct MyStop {
@@ -85,7 +83,7 @@ impl NYCTrains {
 #[derive(Debug, Serialize, Deserialize)]
 struct ApiResponse {
     pub stops: Vec<MyStop>,
-    pub nextId: Option<String>,
+    pub next_id: Option<String>,
 }
 
 #[tokio::main]
@@ -93,42 +91,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env::set_var("RUST_BACKTRACE", "1");
 
     // Make the GET request to the Transitter demo API
-    let response =
-        reqwest::get("https://demo.transiter.dev/systems/us-ny-subway/stops?first_id=718").await?;
+    let api = TransiterRealTimeAPI::from_example_server(DemogAgencies::NycMetro);
 
-    // Check if the request was successful
-    if response.status().is_success() {
-        // Parse the JSON response into a vector of Station structs
-        let api_response: ApiResponse = response.json().await?;
-        let stations = api_response.stops;
+    let out = api.get_outgoing_trips("Queensboro Plaza").await?;
 
-        // Print out the station information
-        println!("Found {} NYC subway stations:", stations.len());
-        let queensboro_stations = stations
-            .iter()
-            .filter(|station| {
-                station
-                    .name
-                    .as_ref()
-                    .is_some_and(|name| name.contains("Queensboro"))
-            })
-            .collect::<Vec<_>>();
-
-        println!(
-            "Found {} Qeeunsborro subway stations:",
-            queensboro_stations.len()
-        );
-        println!("next page token {:?}:", api_response.nextId);
-
-        for station in queensboro_stations {
-            println!(
-                "Name: {:?}\nLine: {:?}\nLocation: ({:?}, {:?})\nID: {}\n",
-                station.name, station.code, station.latitude, station.longitude, station.id
-            );
-        }
-    } else {
-        println!("Error: {} - {}", response.status(), response.text().await?);
-    }
+    let outv2 = out
+        .iter()
+        .map(|x| (x.id.clone(), x.stop_times.clone()))
+        .map(|(id, stop_times)| {
+            let date_times = stop_times
+                .iter()
+                .map(|time| time.arrival.clone())
+                .filter_map(|time| {
+                    let foo = time.map(|time| {
+                        return time
+                            .time
+                            .map(|timestamp| DateTime::from_timestamp(timestamp as i64, 0));
+                    });
+                    return foo;
+                })
+                .flatten()
+                .filter_map(|f| f)
+                .collect::<Vec<_>>();
+            // date_times.iter.map(|datetime| {
+            //     datetime.
+            // });
+            return (id, date_times);
+        })
+        .collect::<Vec<_>>();
+    println!("Got Response {:?} stops", outv2);
 
     Ok(())
 }
