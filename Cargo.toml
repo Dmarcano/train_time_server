@@ -1,28 +1,7 @@
-[package]
-name = "realtime_transit"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = [
+    "gtfs_reader_api",
+]
 
-[dependencies]
-prost = "0.12"
-tonic = "0.11.0"
-axum = "0.7.5"
-tokio = {version = "1.3.7", features = ['full']}
-# http = "0.2.*"
-reqwest = {version = "0.12.4", features = ["json"]}
-serde = {version = "1.0.200", features = ['derive']}
-serde_derive = "1.0.217"
-gtfs-structures = "0.41.2"
-phf = { version = "0.11.1", default-features = false }
-rust_transiter_types = "0.1.3"
-chrono = "0.4.39"
-
-[build-dependencies]
-tonic-build = "0.11.0"
-codegen = "0.2.0"
-gtfs-structures = "0.41.2"
-phf = { version = "0.11.1", default-features = false }
-phf_codegen = "0.11.1"
-
+resolver = "2"
