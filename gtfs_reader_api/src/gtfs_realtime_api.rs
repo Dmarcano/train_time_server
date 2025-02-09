@@ -57,21 +57,26 @@ impl GtfsRealtimeAPI for TransiterRealTimeAPI {
         stop_name: &str,
     ) -> Result<Vec<TransiterStop>, Box<dyn std::error::Error + Sync + Send>> {
         if let Some(stop_ids) = NYC_STATION_NAMES_TO_IDS.get(stop_name) {
-            let stop_2 = stop_ids.iter().map(|ref_str| ref_str.to_string() ).collect::<Vec<_>>();
+            let stop_2 = stop_ids
+                .iter()
+                .map(|ref_str| ref_str.to_string())
+                .collect::<Vec<_>>();
             let stream = stream::iter(stop_2.into_iter());
-            let out = stream.map(|stop_id: String| async move {
-                let request = GetStopRequest {
-                    system_id: "none".to_string(),
-                    skip_stop_times: false,
-                    stop_id: stop_id,
-                    skip_service_maps: true,
-                    skip_transfers: true,
-                    skip_alerts: false,
-                };
+            let out = stream
+                .map(|stop_id: String| async move {
+                    let request = GetStopRequest {
+                        system_id: "none".to_string(),
+                        skip_stop_times: false,
+                        stop_id: stop_id,
+                        skip_service_maps: true,
+                        skip_transfers: true,
+                        skip_alerts: false,
+                    };
 
-                let stop = self.transiter_cliet.get_stop(&request).await;
-                return stop;
-            }).buffered(10);
+                    let stop = self.transiter_cliet.get_stop(&request).await;
+                    return stop;
+                })
+                .buffered(10);
 
             let foo: Vec<_> = out.try_collect().await?;
             return Result::Ok(foo);
@@ -154,7 +159,7 @@ impl TransiterWebAPI for ReqWestTransiterClient {
 pub trait TransiterWebAPI {
     async fn get_transiter_entrypoint(
         &self,
-    ) -> Result<EntrypointReply, Box<dyn core::error::Error + Send +Sync>>;
+    ) -> Result<EntrypointReply, Box<dyn core::error::Error + Send + Sync>>;
 
     async fn list_stops(
         &self,
@@ -165,4 +170,4 @@ pub trait TransiterWebAPI {
         &self,
         request: &GetStopRequest,
     ) -> Result<TransiterStop, Box<dyn core::error::Error + Send + Sync>>;
-} 
+}

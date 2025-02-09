@@ -1,11 +1,8 @@
 pub mod gtfs_realtime_api; //
 
-// use axum::extract::Request;
-use gtfs_structures::LocationType;
-use serde::{Deserialize, Serialize};
 use tokio;
 
-use chrono::{DateTime, NaiveDate};
+use chrono::{DateTime, FixedOffset, NaiveDate, Timelike};
 use reqwest::{self};
 use std::env;
 
@@ -46,13 +43,33 @@ impl NYCTrains {
     }
 }
 
+slint::slint! {
+    export component MyTile inherits Rectangle {
+        width: 64px;
+        height: 64px;
+        background:rgb(48, 141, 121);
+    }
+
+    export component HelloWorld inherits Window {
+        width: 512px;
+        height: 512px;
+        background: #3960D5;
+        Text {
+            text: "hello world";
+            color: green;
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     env::set_var("RUST_BACKTRACE", "1");
+    // HelloWorld::new().unwrap().run().unwrap();
 
     // Make the GET request to the Transitter demo API
     let api = TransiterRealTimeAPI::from_example_server(DemogAgencies::NycMetro);
     let out = api.get_outgoing_trips("Queensboro Plaza").await?;
+    let timezone = FixedOffset::west_opt(5 * 3600).unwrap();
 
     let outv2 = out
         .iter()
@@ -65,7 +82,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     let foo = time.map(|time| {
                         return time
                             .time
-                            .map(|timestamp| DateTime::from_timestamp(timestamp as i64, 0));
+                            .map(|timestamp| DateTime::from_timestamp(timestamp as i64, 0))
+                            .map(|maybe_date_time| {
+                                maybe_date_time
+                                    .map(|utc_time| utc_time.with_timezone(&timezone))
+                                    .map(|date_time| {
+                                        format!(
+                                            " {:02}:{:02}:{:02}",
+                                            date_time.hour(),
+                                            date_time.minute(),
+                                            date_time.second()
+                                        )
+                                    })
+                            });
                     });
                     return foo;
                 })
