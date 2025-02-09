@@ -1,5 +1,6 @@
 use crate::codegen::assets::NYC_STATION_NAMES_TO_IDS;
 use async_trait::async_trait;
+use futures::{stream, StreamExt, TryStreamExt};
 use reqwest::{self};
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +16,7 @@ pub trait GtfsRealtimeAPI {
     async fn get_outgoing_trips(
         &self,
         stop_name: &str,
-    ) ->  Result<Vec<TransiterStop>, Box<dyn std::error::Error>>;
+    ) -> Result<Vec<TransiterStop>, Box<dyn std::error::Error + Sync + Send>>;
 }
 
 const TRANSITER_DEMO_URL: &'static str = "https://demo.transiter.dev/";
@@ -51,31 +52,29 @@ impl TransiterRealTimeAPI {
 
 #[async_trait]
 impl GtfsRealtimeAPI for TransiterRealTimeAPI {
-    
     async fn get_outgoing_trips(
         &self,
         stop_name: &str,
-    ) -> Result<Vec<TransiterStop>, Box<dyn std::error::Error>> {
-
+    ) -> Result<Vec<TransiterStop>, Box<dyn std::error::Error + Sync + Send>> {
         if let Some(stop_ids) = NYC_STATION_NAMES_TO_IDS.get(stop_name) {
-            let mut stops_to_return: Vec<TransiterStop> = Vec::new();
-            for stop_id in stop_ids.iter() {
-                let stop_name = *stop_id;
-
+            let stop_2 = stop_ids.iter().map(|ref_str| ref_str.to_string() ).collect::<Vec<_>>();
+            let stream = stream::iter(stop_2.into_iter());
+            let out = stream.map(|stop_id: String| async move {
                 let request = GetStopRequest {
-                    system_id : "none".to_string(),
-                    skip_stop_times : false, 
-                    stop_id : stop_name.to_string(),
-                    skip_service_maps : true, 
-                    skip_transfers: true, 
-                    skip_alerts : false, 
+                    system_id: "none".to_string(),
+                    skip_stop_times: false,
+                    stop_id: stop_id,
+                    skip_service_maps: true,
+                    skip_transfers: true,
+                    skip_alerts: false,
                 };
 
-                let stop = self.transiter_cliet.get_stop(&request).await?;
-                stops_to_return.push(stop);
-                
-            }
-            return Result::Ok(stops_to_return);
+                let stop = self.transiter_cliet.get_stop(&request).await;
+                return stop;
+            }).buffered(10);
+
+            let foo: Vec<_> = out.try_collect().await?;
+            return Result::Ok(foo);
         }
 
         Result::Err("Did not find TransiterStop".to_string().into())
@@ -110,15 +109,15 @@ impl ReqWestTransiterClient {
 impl TransiterWebAPI for ReqWestTransiterClient {
     async fn get_transiter_entrypoint(
         &self,
-    ) -> Result<EntrypointReply, Box<dyn core::error::Error>> {
+    ) -> Result<EntrypointReply, Box<dyn core::error::Error + Send + Sync>> {
         let response = reqwest::get(self.get_base_uri()).await?;
-        match  response.error_for_status() {
+        match response.error_for_status() {
             Ok(response) => {
                 let reply: EntrypointReply = response.json().await?;
                 return Result::Ok(reply);
             }
             Err(error) => {
-                return Err(error.into()); 
+                return Err(error.into());
             }
         }
     }
@@ -126,26 +125,26 @@ impl TransiterWebAPI for ReqWestTransiterClient {
     async fn list_stops(
         &self,
         _request: &ListStopsRequest,
-    ) -> Result<ListStopsReply, Box<dyn core::error::Error>> {
+    ) -> Result<ListStopsReply, Box<dyn core::error::Error + Send + Sync>> {
         todo!()
     }
 
     async fn get_stop(
         &self,
         request: &GetStopRequest,
-    ) -> Result<TransiterStop, Box<dyn core::error::Error>> {
-        let stop_id: &str  = request.stop_id.as_ref();
-        let stop_url = format!("{}{}/stops/{}",  self.server_uri, self.agency_url, stop_id);
+    ) -> Result<TransiterStop, Box<dyn core::error::Error + Send + Sync>> {
+        let stop_id: &str = request.stop_id.as_ref();
+        let stop_url = format!("{}{}/stops/{}", self.server_uri, self.agency_url, stop_id);
 
         let response = reqwest::get(stop_url).await?;
 
-        match  response.error_for_status() {
+        match response.error_for_status() {
             Ok(response) => {
                 let stop: TransiterStop = response.json().await?;
                 return Result::Ok(stop);
             }
             Err(error) => {
-                return Err(error.into()); 
+                return Err(error.into());
             }
         }
     }
@@ -155,16 +154,15 @@ impl TransiterWebAPI for ReqWestTransiterClient {
 pub trait TransiterWebAPI {
     async fn get_transiter_entrypoint(
         &self,
-    ) ->  Result<EntrypointReply, Box<dyn core::error::Error>>;
-
+    ) -> Result<EntrypointReply, Box<dyn core::error::Error + Send +Sync>>;
 
     async fn list_stops(
         &self,
         request: &ListStopsRequest,
-    ) -> Result<ListStopsReply, Box<dyn core::error::Error>>;
+    ) -> Result<ListStopsReply, Box<dyn core::error::Error + Send + Sync>>;
 
     async fn get_stop(
         &self,
         request: &GetStopRequest,
-    ) -> Result<TransiterStop, Box<dyn core::error::Error>>;
-}
+    ) -> Result<TransiterStop, Box<dyn core::error::Error + Send + Sync>>;
+} 

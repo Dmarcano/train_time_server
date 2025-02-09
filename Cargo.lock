@@ -1659,6 +1659,7 @@ dependencies = [
  "axum 0.7.9",
  "chrono",
  "codegen",
+ "futures",
  "gtfs-structures",
  "phf",
  "phf_codegen",

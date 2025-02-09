@@ -47,12 +47,11 @@ impl NYCTrains {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     env::set_var("RUST_BACKTRACE", "1");
 
     // Make the GET request to the Transitter demo API
     let api = TransiterRealTimeAPI::from_example_server(DemogAgencies::NycMetro);
-
     let out = api.get_outgoing_trips("Queensboro Plaza").await?;
 
     let outv2 = out
