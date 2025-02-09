@@ -18,6 +18,7 @@ gtfs-structures = "0.41.2"
 phf = { version = "0.11.1", default-features = false }
 rust_transiter_types = "0.1.3"
 chrono = "0.4.39"
+async-trait = "0.1.86"
 
 [build-dependencies]
 tonic-build = "0.11.0"
