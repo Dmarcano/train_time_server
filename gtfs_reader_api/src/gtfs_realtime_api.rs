@@ -12,10 +12,10 @@ pub trait GtfsRealtimeAPI {
     /***
      * Get all the stations for a transit system
      */
-    async fn get_outgoing_trips(
+    fn get_outgoing_trips(
         &self,
         stop_name: &str,
-    ) -> Result<Vec<TransiterStop>, Box<dyn std::error::Error + Sync + Send>>;
+    ) -> impl core::future::Future<Output =Result<Vec<TransiterStop>, Box<dyn std::error::Error + Sync + Send>>>;
 }
 
 const TRANSITER_DEMO_URL: &'static str = "https://demo.transiter.dev/";
@@ -161,17 +161,17 @@ impl TransiterWebAPI for ReqWestTransiterClient {
 
 
 pub trait TransiterWebAPI {
-    async fn get_transiter_entrypoint(
+    fn get_transiter_entrypoint(
         &self,
-    ) -> Result<EntrypointReply, Box<dyn core::error::Error + Send + Sync>>;
+    ) -> impl core::future::Future<Output =  Result<EntrypointReply, Box<dyn core::error::Error + Send + Sync>>>;
 
-    async fn list_stops(
+    fn list_stops(
         &self,
         request: &ListStopsRequest,
-    ) -> Result<ListStopsReply, Box<dyn core::error::Error + Send + Sync>>;
+    ) -> impl core::future::Future<Output = Result<ListStopsReply, Box<dyn core::error::Error + Send + Sync>>>;
 
-    async fn get_stop(
+    fn get_stop(
         &self,
         request: &GetStopRequest,
-    ) -> Result<TransiterStop, Box<dyn core::error::Error + Send + Sync>>;
+    ) ->  impl core::future::Future<Output =Result<TransiterStop, Box<dyn core::error::Error + Send + Sync>>>;
 }
