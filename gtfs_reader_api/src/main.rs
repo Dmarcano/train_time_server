@@ -2,8 +2,7 @@ pub mod gtfs_realtime_api; //
 
 use tokio;
 
-use chrono::{DateTime, FixedOffset, NaiveDate, Timelike};
-use reqwest::{self};
+use chrono::DateTime;
 use std::env;
 
 pub mod codegen;
@@ -96,7 +95,8 @@ slint::slint! {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    env::set_var("RUST_BACKTRACE", "1");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("RUST_BACKTRACE", "1") };
 
     let local_time = chrono::Utc::now();
 
