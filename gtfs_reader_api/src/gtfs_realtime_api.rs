@@ -1,5 +1,4 @@
 use crate::codegen::assets::NYC_STATION_NAMES_TO_IDS;
-use async_trait::async_trait;
 use futures::{stream, StreamExt, TryStreamExt};
 use reqwest::{self};
 use serde::{Deserialize, Serialize};
@@ -8,7 +7,7 @@ use rust_transiter_types::public_api_types::{
     EntrypointReply, GetStopRequest, ListStopsReply, ListStopsRequest, Stop as TransiterStop,
 };
 
-#[async_trait]
+
 pub trait GtfsRealtimeAPI {
     /***
      * Get all the stations for a transit system
@@ -21,8 +20,10 @@ pub trait GtfsRealtimeAPI {
 
 const TRANSITER_DEMO_URL: &'static str = "https://demo.transiter.dev/";
 
-pub struct TransiterRealTimeAPI {
-    transiter_cliet: Box<dyn TransiterWebAPI + Sync + Send>,
+pub struct TransiterRealTimeAPI<TransiterWebClient>
+where TransiterWebClient : TransiterWebAPI + Sync  + Send{
+    transiter_cliet: TransiterWebClient,
+    // transiter_cliet: Box<dyn TransiterWebAPI + Sync + Send>,
 }
 
 /**
@@ -41,17 +42,18 @@ impl DemogAgencies {
     }
 }
 
-impl TransiterRealTimeAPI {
+impl TransiterRealTimeAPI<ReqWestTransiterClient> {
     pub fn from_example_server(agency: DemogAgencies) -> Self {
         let client = ReqWestTransiterClient::from_example_server(agency);
+
         Self {
-            transiter_cliet: Box::new(client),
+            transiter_cliet: client,
         }
     }
 }
 
-#[async_trait]
-impl GtfsRealtimeAPI for TransiterRealTimeAPI {
+
+impl<TransiterWebClient> GtfsRealtimeAPI for TransiterRealTimeAPI<TransiterWebClient>  where TransiterWebClient : TransiterWebAPI + Sync  + Send  {
     async fn get_outgoing_trips(
         &self,
         stop_name: &str,
@@ -94,7 +96,7 @@ struct ApiResponse {
     pub next_id: Option<String>,
 }
 
-struct ReqWestTransiterClient {
+pub struct ReqWestTransiterClient {
     server_uri: String,
     agency_url: String,
 }
@@ -112,7 +114,7 @@ impl ReqWestTransiterClient {
     }
 }
 
-#[async_trait]
+
 impl TransiterWebAPI for ReqWestTransiterClient {
     async fn get_transiter_entrypoint(
         &self,
@@ -157,7 +159,7 @@ impl TransiterWebAPI for ReqWestTransiterClient {
     }
 }
 
-#[async_trait]
+
 pub trait TransiterWebAPI {
     async fn get_transiter_entrypoint(
         &self,
