@@ -44,34 +44,67 @@ impl NYCTrains {
 }
 
 slint::slint! {
-    export component MyTile inherits Rectangle {
-        width: 64px;
-        height: 64px;
-        background:rgb(48, 141, 121);
+    import { LineEdit, Button } from "std-widgets.slint";
+
+    export component StopTime {
+        in property <int> num_hours;
+        in property <int> num_minutes;
+        in property <int> num_seconds;
+        Rectangle {
+            Text {
+                text: "hours";
+            }
+        }
+    }   
+
+    export component StopView {
+        in property <string> stop_name;
+        Text {
+            text: stop_name;
+            color: #0443bf;
+        }
     }
 
     export component HelloWorld inherits Window {
-        width: 512px;
-        height: 512px;
-        background: #3960D5;
-        Text {
-            text: "hello world";
-            color: green;
+        // width: 512px;
+        // height: 512px;
+        background: #e3e4e6;
+
+        VerticalLayout {
+        LineEdit {}
+            StopView {
+                stop_name: "R09";
+            }
+        // if TextInputInterface.text-input-focused: VKB {}
+
+
+        label := Text {
+            text: "Button not clicked";
         }
+
+        Button {
+            text: "Click Me";
+            clicked => {
+                label.text = " Button clicked";
+            }
+        }
+
+    }
+
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     env::set_var("RUST_BACKTRACE", "1");
-    // HelloWorld::new().unwrap().run().unwrap();
+
+    let local_time = chrono::Utc::now();
 
     // Make the GET request to the Transitter demo API
     let api = TransiterRealTimeAPI::from_example_server(DemogAgencies::NycMetro);
-    let out = api.get_outgoing_trips("Queensboro Plaza").await?;
-    let timezone = FixedOffset::west_opt(5 * 3600).unwrap();
+    let outgoing_trips = api.get_outgoing_trips("Queensboro Plaza").await?;
 
-    let outv2 = out
+    let outv2 = outgoing_trips
         .iter()
         .map(|x| (x.id.clone(), x.stop_times.clone()))
         .map(|(id, stop_times)| {
@@ -84,16 +117,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             .time
                             .map(|timestamp| DateTime::from_timestamp(timestamp as i64, 0))
                             .map(|maybe_date_time| {
-                                maybe_date_time
-                                    .map(|utc_time| utc_time.with_timezone(&timezone))
-                                    .map(|date_time| {
+                                maybe_date_time.map(|utc_time| utc_time - local_time).map(
+                                    |date_time| {
                                         format!(
-                                            " {:02}:{:02}:{:02}",
-                                            date_time.hour(),
-                                            date_time.minute(),
-                                            date_time.second()
+                                            "{:02}:{:02}:{:02}",
+                                            date_time.num_hours(),
+                                            date_time.num_minutes(),
+                                            date_time.num_seconds()
                                         )
-                                    })
+                                    },
+                                )
                             });
                     });
                     return foo;

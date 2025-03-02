@@ -67,13 +67,15 @@ impl GtfsRealtimeAPI for TransiterRealTimeAPI {
                     let request = GetStopRequest {
                         system_id: "none".to_string(),
                         skip_stop_times: false,
-                        stop_id: stop_id,
+                        stop_id: stop_id.clone(),
                         skip_service_maps: true,
                         skip_transfers: true,
                         skip_alerts: false,
                     };
 
                     let stop = self.transiter_cliet.get_stop(&request).await;
+                    println!("stopid: {:#?} stop is ok: {:#?}", stop_id, stop.is_ok());
+
                     return stop;
                 })
                 .buffered(10);
@@ -140,7 +142,7 @@ impl TransiterWebAPI for ReqWestTransiterClient {
     ) -> Result<TransiterStop, Box<dyn core::error::Error + Send + Sync>> {
         let stop_id: &str = request.stop_id.as_ref();
         let stop_url = format!("{}{}/stops/{}", self.server_uri, self.agency_url, stop_id);
-
+        println!("stop_url: {}", stop_url);
         let response = reqwest::get(stop_url).await?;
 
         match response.error_for_status() {
