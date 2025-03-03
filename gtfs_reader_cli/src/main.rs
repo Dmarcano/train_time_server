@@ -1,13 +1,10 @@
-pub mod gtfs_realtime_api; //
-
+use realtime_transit_api; //
 use tokio;
-
 use chrono::DateTime;
 use std::env;
 
-pub mod codegen;
 
-use gtfs_realtime_api::{DemogAgencies, GtfsRealtimeAPI, TransiterRealTimeAPI};
+use realtime_transit_api::gtfs_realtime_api::{DemogAgencies, GtfsRealtimeAPI, TransiterRealTimeAPI};
 
 #[derive(Copy, Clone, Debug)]
 pub enum NYCTrains {
@@ -42,56 +39,56 @@ impl NYCTrains {
     }
 }
 
-slint::slint! {
-    import { LineEdit, Button } from "std-widgets.slint";
+// slint::slint! {
+//     import { LineEdit, Button } from "std-widgets.slint";
 
-    export component StopTime {
-        in property <int> num_hours;
-        in property <int> num_minutes;
-        in property <int> num_seconds;
-        Rectangle {
-            Text {
-                text: "hours";
-            }
-        }
-    }   
+//     export component StopTime {
+//         in property <int> num_hours;
+//         in property <int> num_minutes;
+//         in property <int> num_seconds;
+//         Rectangle {
+//             Text {
+//                 text: "hours";
+//             }
+//         }
+//     }   
 
-    export component StopView {
-        in property <string> stop_name;
-        Text {
-            text: stop_name;
-            color: #0443bf;
-        }
-    }
+//     export component StopView {
+//         in property <string> stop_name;
+//         Text {
+//             text: stop_name;
+//             color: #0443bf;
+//         }
+//     }
 
-    export component HelloWorld inherits Window {
-        // width: 512px;
-        // height: 512px;
-        background: #e3e4e6;
+//     export component HelloWorld inherits Window {
+//         // width: 512px;
+//         // height: 512px;
+//         background: #e3e4e6;
 
-        VerticalLayout {
-        LineEdit {}
-            StopView {
-                stop_name: "R09";
-            }
-        // if TextInputInterface.text-input-focused: VKB {}
+//         VerticalLayout {
+//         LineEdit {}
+//             StopView {
+//                 stop_name: "R09";
+//             }
+//         // if TextInputInterface.text-input-focused: VKB {}
 
 
-        label := Text {
-            text: "Button not clicked";
-        }
+//         label := Text {
+//             text: "Button not clicked";
+//         }
 
-        Button {
-            text: "Click Me";
-            clicked => {
-                label.text = " Button clicked";
-            }
-        }
+//         Button {
+//             text: "Click Me";
+//             clicked => {
+//                 label.text = " Button clicked";
+//             }
+//         }
 
-    }
+//     }
 
-    }
-}
+//     }
+// }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

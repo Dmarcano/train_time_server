@@ -2141,6 +2141,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "gtfs_reader_cli"
+version = "0.1.0"
+dependencies = [
+ "axum 0.7.9",
+ "chrono",
+ "gtfs-structures",
+ "realtime_transit_api",
+ "reqwest 0.12.12",
+ "rust_transiter_types",
+ "serde",
+ "serde_derive",
+ "slint",
+ "tokio",
+]
+
+[[package]]
 name = "gtk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4437,12 +4453,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "realtime_transit"
+name = "realtime_transit_api"
 version = "0.1.0"
 dependencies = [
- "async-trait",
- "axum 0.7.9",
- "chrono",
  "codegen",
  "futures",
  "gtfs-structures",
@@ -4453,8 +4466,6 @@ dependencies = [
  "rust_transiter_types",
  "serde",
  "serde_derive",
- "slint",
- "tokio",
  "tonic",
  "tonic-build",
 ]

@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "gtfs_reader_api",
+    "gtfs_reader_cli",
 ]
 resolver = "2"
