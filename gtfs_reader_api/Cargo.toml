@@ -14,7 +14,7 @@ serde = {version = "1.0.200", features = ['derive']}
 serde_derive = "1.0.217"
 gtfs-structures = "0.41.2"
 phf = { version = "0.11.1", default-features = false }
-rust_transiter_types = "0.1.4"
+rust_transiter_types = "0.1.5"
 futures = {version = "0.3.31", default-features = false}
 
 

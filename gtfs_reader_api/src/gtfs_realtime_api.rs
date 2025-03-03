@@ -23,7 +23,6 @@ const TRANSITER_DEMO_URL: &'static str = "https://demo.transiter.dev/";
 pub struct TransiterRealTimeAPI<TransiterWebClient>
 where TransiterWebClient : TransiterWebAPI + Sync  + Send{
     transiter_cliet: TransiterWebClient,
-    // transiter_cliet: Box<dyn TransiterWebAPI + Sync + Send>,
 }
 
 /**
