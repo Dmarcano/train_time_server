@@ -1,3 +1,5 @@
+cargo-features = ["edition2024"]
+
 [package]
 name = "gtfs_reader_cli"
 version = "0.1.0"
@@ -10,7 +12,7 @@ reqwest = {version = "0.12.4", features = ["json"]}
 serde = {version = "1.0.200", features = ['derive']}
 serde_derive = "1.0.217"
 gtfs-structures = "0.41.2"
-rust_transiter_types = "0.1.4"
+rust_transiter_types = "0.1.6"
 chrono = "0.4.39"
 slint = "1.9.2"
 realtime_transit_api ={ "path" = "../gtfs_reader_api" }
